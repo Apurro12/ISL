@@ -37,7 +37,8 @@ df = pd.DataFrame({
 df_train, df_test = train_test_split(df,  test_size=0.3)
 
 
-def features_candidates(decreasing_bag: list, increasing_bag: list, forward: bool = True):
+def features_candidates(decreasing_bag: list, increasing_bag: list, forward: bool = True, first_iter = True):
+
     if forward is True:
         for new_feature_candidate in decreasing_bag:
             features = [new_feature_candidate] + increasing_bag
@@ -45,15 +46,19 @@ def features_candidates(decreasing_bag: list, increasing_bag: list, forward: boo
 
     # This is not fully functional yet
     if forward is False:
-        for remove_feature_candidate in decreasing_bag:
-            new_feature_set = decreasing_bag[:]
-            new_feature_set.remove(remove_feature_candidate)
-            yield new_feature_set, remove_feature_candidate
+        if first_iter:
+            yield decreasing_bag, []
 
-def select_best_regresor(decreasing_bag, increasing_bag, forward):
+        if not first_iter:
+            for remove_feature_candidate in decreasing_bag:
+                new_feature_set = decreasing_bag[:]
+                new_feature_set.remove(remove_feature_candidate)
+                yield new_feature_set, remove_feature_candidate
+
+def select_best_regresor(decreasing_bag, increasing_bag, forward, first_iter):
 
     results = pd.DataFrame()
-    for features, changed_feature in features_candidates(decreasing_bag, increasing_bag, forward):
+    for features, changed_feature in features_candidates(decreasing_bag, increasing_bag, forward, first_iter):
 
         model = LinearRegression()
         model.fit(df_train[features], df_train['y'])
@@ -69,6 +74,9 @@ def select_best_regresor(decreasing_bag, increasing_bag, forward):
 
         results = pd.concat([results, df_to_concat])
 
+        if changed_feature == []:
+            break
+
     results = results.reset_index(drop=True)
     best_index = results['mse'].argmin()
 
@@ -82,23 +90,25 @@ def update_features(best_regresor, decreasing_bag, increasing_bag):
     if best_regresor == []:
         return decreasing_bag, []
 
-    if best_regresor != []:
-        decreasing_bag.remove(best_regresor)
-        increasing_bag += [best_regresor]
+    decreasing_bag.remove(best_regresor)
+    increasing_bag += [best_regresor]
 
-        return decreasing_bag, increasing_bag
+    return decreasing_bag, increasing_bag
 
 
 def select_features(forward: bool = True):
     decreasing_bag = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6']
+    num_features = list(range(len(decreasing_bag)))
     increasing_bag = []
     mse_list = []
     xticks = []
-    for _ in range(len(decreasing_bag)):
+    first_iter = True
+    for _ in num_features:
         updated_regresor, mse = select_best_regresor(
             decreasing_bag,
             increasing_bag,
-            forward
+            forward,
+            first_iter #Just by backward
         )
 
         decreasing_bag, increasing_bag = update_features(updated_regresor, decreasing_bag, increasing_bag)
@@ -107,6 +117,7 @@ def select_features(forward: bool = True):
 
         xticks.append(str(updated_regresor))
         print(increasing_bag)
+        first_iter = False
 
     plt.tight_layout()
     plt.plot(
