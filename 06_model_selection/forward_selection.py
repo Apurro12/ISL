@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import itertools
+from sklearn.preprocessing import StandardScaler
 from numpy import random as rd
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -10,7 +9,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 num_data = 1000
 x1 = rd.random(size = num_data)
-x1 = x1 / x1.std()
+x1 = (x1 - x1.mean()) / x1.std()
 
 x2 = rd.random(size = num_data)
 x2 = x2 / x2.std()
@@ -34,6 +33,13 @@ df = pd.DataFrame({
     'y':y
 })
 
+# The scaler makes that everything makes more sense
+scaler = StandardScaler()
+scaler.fit(df[['x1','x2','x3','x4','x5','x6']].values)
+df[['x1','x2','x3','x4','x5','x6']] = scaler.transform(df[['x1','x2','x3','x4','x5','x6']].values)
+
+# I know I need to split and after scaling
+# But I'm not worry about overfiting here
 df_train, df_test = train_test_split(df,  test_size=0.3)
 
 
